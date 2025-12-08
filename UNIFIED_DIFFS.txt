@@ -1,0 +1,1194 @@
+diff --git a/src/utils/validationHelpers.js b/src/utils/validationHelpers.js
+index 1234567..abcdefg 100644
+--- a/src/utils/validationHelpers.js
++++ b/src/utils/validationHelpers.js
+@@ -1,27 +1,24 @@
++/**
++ * Validates string input with configurable length constraints
++ * @param {string} input - The input to validate
++ * @param {number} minLength - Minimum allowed length (default: 3)
++ * @param {number} maxLength - Maximum allowed length (default: 100)
++ * @returns {object} Validation result with valid flag and optional error message
++ */
+-export function checkInputValidity(inputValue) {
++export function validateStringInput(input, minLength = 3, maxLength = 100) {
+-  if (!inputValue) {
++  if (!input) {
+     return { valid: false, error: 'Input is required' };
+   }
+-  if (typeof inputValue !== 'string') {
++  if (typeof input !== 'string') {
+     return { valid: false, error: 'Input must be a string' };
+   }
+-  if (inputValue.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
++  if (input.length < minLength) {
++    return { valid: false, error: `Input must be at least ${minLength} characters` };
+   }
+-  if (inputValue.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
++  if (input.length > maxLength) {
++    return { valid: false, error: `Input must be less than ${maxLength + 1} characters` };
+   }
+   return { valid: true };
+ }
+ 
+-export function verifyQueryParameter(queryParam) {
+-  if (!queryParam) {
+-    return { valid: false, error: 'Input is required' };
+-  }
+-  if (typeof queryParam !== 'string') {
+-    return { valid: false, error: 'Input must be a string' };
+-  }
+-  if (queryParam.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
+-  }
+-  if (queryParam.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
+-  }
+-  return { valid: true };
+-}
+-
+-export function validateStringInput(str) {
+-  if (!str) {
+-    return { valid: false, error: 'Input is required' };
+-  }
+-  if (typeof str !== 'string') {
+-    return { valid: false, error: 'Input must be a string' };
+-  }
+-  if (str.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
+-  }
+-  if (str.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
+-  }
+-  return { valid: true };
+-}
++// Legacy aliases for backward compatibility
++export const checkInputValidity = validateStringInput;
++export const verifyQueryParameter = validateStringInput;
+
+diff --git a/src/utils/responseFormatters.js b/src/utils/responseFormatters.js
+index 2345678..bcdefgh 100644
+--- a/src/utils/responseFormatters.js
++++ b/src/utils/responseFormatters.js
+@@ -1,115 +1,73 @@
+-export function createFormattedResponse(response) {
++/**
++ * Generates a unique ID for items
++ * @returns {string} A unique identifier
++ */
++function generateItemId(fallbackId = null) {
++  return fallbackId || Math.random().toString(36).substr(2, 9);
++}
++
++/**
++ * Normalizes an item into a standard format with id, content, and timestamp
++ * @param {*} item - The item to normalize
++ * @param {number} index - The index for fallback ID generation
++ * @returns {object} Normalized item object
++ */
++function normalizeItem(item, index = null) {
++  if (item && typeof item === 'object') {
++    return {
++      id: item.id || item._id || generateItemId(),
++      content: item.content || item.text || item.name || JSON.stringify(item),
++      timestamp: item.timestamp || item.createdAt || new Date().toISOString()
++    };
++  }
++  return {
++    id: generateItemId(),
++    content: String(item),
++    timestamp: new Date().toISOString()
++  };
++}
++
++/**
++ * Formats a response object into a standardized structure
++ * @param {object} response - The response object to format
++ * @returns {object} Formatted response with structure metadata
++ */
++export function formatResponse(response) {
+   if (response.success) {
+     if (response.data) {
+       if (Array.isArray(response.data)) {
+         return {
+           formatted: true,
+           type: 'array',
+           count: response.data.length,
+-          items: response.data.map(item => {
+-            if (item && typeof item === 'object') {
+-              return {
+-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
+-                content: item.content || item.text || item.name || JSON.stringify(item),
+-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+-              };
+-            }
+-            return {
+-              id: Math.random().toString(36).substr(2, 9),
+-              content: String(item),
+-              timestamp: new Date().toISOString()
+-            };
+-          })
++          items: response.data.map((item, idx) => normalizeItem(item, idx))
+         };
+       } else if (typeof response.data === 'object') {
+         return {
+           formatted: true,
+           type: 'object',
+-          data: {
+-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
+-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
+-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
+-          }
++          data: normalizeItem(response.data)
+         };
+       } else {
+         return {
+           formatted: true,
+           type: 'primitive',
+-          data: {
+-            id: Math.random().toString(36).substr(2, 9),
+-            content: String(response.data),
+-            timestamp: new Date().toISOString()
+-          }
++          data: normalizeItem(response.data)
+         };
+       }
+     } else {
+       return {
+         formatted: true,
+         type: 'empty',
+         data: {
+-          id: Math.random().toString(36).substr(2, 9),
++          id: generateItemId(),
+           content: 'No data available',
+           timestamp: new Date().toISOString()
+         }
+       };
+     }
+   } else {
+     return {
+       formatted: true,
+       type: 'error',
+       data: {
+-        id: Math.random().toString(36).substr(2, 9),
++        id: generateItemId(),
+         content: response.error || 'Unknown error',
+         timestamp: new Date().toISOString()
+       }
+     };
+   }
+ }
+ 
+-export function buildResponseObject(response) {
+-  if (response.success) {
+-    if (response.data) {
+-      if (Array.isArray(response.data)) {
+-        return {
+-          formatted: true,
+-          type: 'array',
+-          count: response.data.length,
+-          items: response.data.map(item => {
+-            if (item && typeof item === 'object') {
+-              return {
+-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
+-                content: item.content || item.text || item.name || JSON.stringify(item),
+-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+-              };
+-            }
+-            return {
+-              id: Math.random().toString(36).substr(2, 9),
+-              content: String(item),
+-              timestamp: new Date().toISOString()
+-            };
+-          })
+-        };
+-      } else if (typeof response.data === 'object') {
+-        return {
+-          formatted: true,
+-          type: 'object',
+-          data: {
+-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
+-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
+-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
+-          }
+-        };
+-      } else {
+-        return {
+-          formatted: true,
+-          type: 'primitive',
+-          data: {
+-            id: Math.random().toString(36).substr(2, 9),
+-            content: String(response.data),
+-            timestamp: new Date().toISOString()
+-          }
+-        };
+-      }
+-    } else {
+-      return {
+-        formatted: true,
+-        type: 'empty',
+-        data: {
+-          id: Math.random().toString(36).substr(2, 9),
+-          content: 'No data available',
+-          timestamp: new Date().toISOString()
+-        }
+-      };
+-    }
+-  } else {
+-    return {
+-      formatted: true,
+-      type: 'error',
+-      data: {
+-        id: Math.random().toString(36).substr(2, 9),
+-        content: response.error || 'Unknown error',
+-        timestamp: new Date().toISOString()
+-      }
+-    };
+-  }
+-}
++// Legacy aliases for backward compatibility
++export const createFormattedResponse = formatResponse;
++export const buildResponseObject = formatResponse;
+
+diff --git a/src/utils/dataProcessor.js b/src/utils/dataProcessor.js
+index 3456789..cdefghi 100644
+--- a/src/utils/dataProcessor.js
++++ b/src/utils/dataProcessor.js
+@@ -1,78 +1,133 @@
++/**
++ * Normalizes an item by extracting standard fields
++ * @param {*} item - The item to normalize
++ * @param {number} index - Index for fallback ID
++ * @returns {object} Normalized item with id, value, timestamp, processed flag
++ */
++function normalizeItem(item, index = 0) {
++  if (item && typeof item === 'object') {
++    return {
++      id: item.id || item._id || `item-${index}`,
++      value: item.value || item.data || item.content || 0,
++      timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
++      processed: true
++    };
++  }
++  return {
++    id: `item-${index}`,
++    value: item || 0,
++    timestamp: new Date().toISOString(),
++    processed: true
++  };
++}
++
++/**
++ * Processes an array of data items
++ * @param {Array} data - The array to process
++ * @returns {object} Result object with success flag and processed data
++ */
+ export function processDataArray(data) {
+   if (!Array.isArray(data)) {
+     return { error: 'Input must be an array' };
+   }
+   
+-  const result = [];
+-  for (let i = 0; i < data.length; i++) {
+-    const item = data[i];
+-    if (item && typeof item === 'object') {
+-      const processed = {
+-        id: item.id || item._id || `item-${i}`,
+-        value: item.value || item.data || item.content || 0,
+-        timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
+-        processed: true
+-      };
+-      result.push(processed);
+-    } else {
+-      result.push({
+-        id: `item-${i}`,
+-        value: item || 0,
+-        timestamp: new Date().toISOString(),
+-        processed: true
+-      });
+-    }
+-  }
++  const result = data.map((item, i) => normalizeItem(item, i));
+   return { success: true, data: result };
+ }
+ 
+-export function processDataArray2(data) {
++/**
++ * Processes a single data object
++ * @param {object} obj - The object to process
++ * @returns {object} Result object with success flag and processed data
++ */
++export function processDataObject(obj) {
++  if (!obj || typeof obj !== 'object') {
++    return { error: 'Input must be an object' };
++  }
++  
++  const processed = {
++    id: obj.id || obj._id || Math.random().toString(36).substr(2, 9),
++    value: obj.value || obj.data || obj.content || '',
++    timestamp: obj.timestamp || obj.createdAt || new Date().toISOString(),
++    processed: true
++  };
++  
++  return { success: true, data: processed };
++}
++
++/**
++ * Applies case transformation (uppercase/lowercase) to data
++ * @param {*} data - The data to transform
++ * @param {string} transformType - 'uppercase' or 'lowercase'
++ * @returns {*} Transformed data
++ */
++function applyCaseTransformation(data, transformType) {
++  const toUpperCase = transformType === 'uppercase';
++  const transform = toUpperCase ? (s) => s.toUpperCase() : (s) => s.toLowerCase();
++  
++  if (typeof data === 'string') {
++    return transform(data);
++  } else if (Array.isArray(data)) {
++    return data.map(item => {
++      if (typeof item === 'string') {
++        return transform(item);
++      } else if (item && typeof item === 'object' && item.value) {
++        return { ...item, value: transform(String(item.value)) };
++      }
++      return item;
++    });
++  } else if (data && typeof data === 'object' && data.value) {
++    return { ...data, value: transform(String(data.value)) };
++  }
++  return data;
++}
++
++/**
++ * Transforms data using the specified transformation type
++ * @param {*} data - The data to transform
++ * @param {string} transformType - 'uppercase', 'lowercase', or 'reverse'
++ * @returns {*} Transformed data
++ */
++export function transformData(data, transformType) {
++  if (transformType === 'uppercase' || transformType === 'lowercase') {
++    return applyCaseTransformation(data, transformType);
++  } else if (transformType === 'reverse') {
++    if (typeof data === 'string') {
++      return data.split('').reverse().join('');
++    } else if (Array.isArray(data)) {
++      return data.slice().reverse();
++    }
++    return data;
++  }
++  return data;
++}
++
++/**
++ * Filters array data based on criteria
++ * @param {Array} data - The data to filter
++ * @param {object} filterCriteria - Filter criteria object with field, operator, and value
++ * @returns {Array} Filtered data
++ */
++export function filterData(data, filterCriteria) {
+   if (!Array.isArray(data)) {
+     return { error: 'Input must be an array' };
+   }
+   
+-  const result = [];
+-  for (let i = 0; i < data.length; i++) {
+-    const item = data[i];
+-    if (item && typeof item === 'object') {
+-      const processed = {
+-        id: item.id || item._id || `item-${i}`,
+-        value: item.value || item.data || item.content || 0,
+-        timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
+-        processed: true
+-      };
+-      result.push(processed);
+-    } else {
+-      result.push({
+-        id: `item-${i}`,
+-        value: item || 0,
+-        timestamp: new Date().toISOString(),
+-        processed: true
+-      });
+-    }
+-  }
+-  return { success: true, data: result };
++  return data.filter(item => {
++    if (filterCriteria.field && filterCriteria.value !== undefined) {
++      if (item && typeof item === 'object') {
++        const fieldValue = item[filterCriteria.field];
++        switch (filterCriteria.operator) {
++          case 'equals':
++            return fieldValue === filterCriteria.value;
++          case 'contains':
++            return String(fieldValue).includes(String(filterCriteria.value));
++          case 'greaterThan':
++            return Number(fieldValue) > Number(filterCriteria.value);
++          case 'lessThan':
++            return Number(fieldValue) < Number(filterCriteria.value);
++          default:
++            return false;
++        }
++      }
++      return false;
++    }
++    return true;
++  });
+ }
+
+diff --git a/src/utils/dataTransform.js b/src/utils/dataTransform.js
+index 4567890..defghij 100644
+--- a/src/utils/dataTransform.js
++++ b/src/utils/dataTransform.js
+@@ -1,148 +1,5 @@
+-export function convertToUppercase(input) {
+-  if (typeof input === 'string') {
+-    return input.toUpperCase();
+-  } else if (Array.isArray(input)) {
+-    return input.map(elem => {
+-      if (typeof elem === 'string') {
+-        return elem.toUpperCase();
+-      } else if (elem && typeof elem === 'object' && elem.value) {
+-        return { ...elem, value: String(elem.value).toUpperCase() };
+-      }
+-      return elem;
+-    });
+-  } else if (input && typeof input === 'object' && input.value) {
+-    return { ...input, value: String(input.value).toUpperCase() };
+-  }
+-  return input;
+-}
+-
+-export function convertToLowercase(input) {
+-  if (typeof input === 'string') {
+-    return input.toLowerCase();
+-  } else if (Array.isArray(input)) {
+-    return input.map(elem => {
+-      if (typeof elem === 'string') {
+-        return elem.toLowerCase();
+-      } else if (elem && typeof elem === 'object' && elem.value) {
+-        return { ...elem, value: String(elem.value).toLowerCase() };
+-      }
+-      return elem;
+-    });
+-  } else if (input && typeof input === 'object' && input.value) {
+-    return { ...input, value: String(input.value).toLowerCase() };
+-  }
+-  return input;
+-}
+-
+-export function reverseData(input) {
+-  if (typeof input === 'string') {
+-    return input.split('').reverse().join('');
+-  } else if (Array.isArray(input)) {
+-    return input.slice().reverse();
+-  }
+-  return input;
+-}
+-
+-export function applyDataTransformation(inputData, transformation) {
+-  if (transformation === 'uppercase') {
+-    return convertToUppercase(inputData);
+-  } else if (transformation === 'lowercase') {
+-    return convertToLowercase(inputData);
+-  } else if (transformation === 'reverse') {
+-    return reverseData(inputData);
+-  }
+-  return inputData;
+-}
+-
+-export function handleArrayProcessing(inputArray) {
+-  if (!Array.isArray(inputArray)) {
+-    return { error: 'Input must be an array' };
+-  }
+-  
+-  const processedItems = [];
+-  for (let index = 0; index < inputArray.length; index++) {
+-    const currentItem = inputArray[index];
+-    if (currentItem && typeof currentItem === 'object') {
+-      const transformedItem = {
+-        id: currentItem.id || currentItem._id || `item-${index}`,
+-        value: currentItem.value || currentItem.data || currentItem.content || 0,
+-        timestamp: currentItem.timestamp || currentItem.createdAt || new Date().toISOString(),
+-        processed: true
+-      };
+-      processedItems.push(transformedItem);
+-    } else {
+-      processedItems.push({
+-        id: `item-${index}`,
+-        value: currentItem || 0,
+-        timestamp: new Date().toISOString(),
+-        processed: true
+-      });
+-    }
+-  }
+-  return { success: true, data: processedItems };
+-}
+-
+-export function handleObjectProcessing(inputObject) {
+-  if (!inputObject || typeof inputObject !== 'object') {
+-    return { error: 'Input must be an object' };
+-  }
+-  
+-  const transformedObject = {
+-    id: inputObject.id || inputObject._id || Math.random().toString(36).substr(2, 9),
+-    value: inputObject.value || inputObject.data || inputObject.content || '',
+-    timestamp: inputObject.timestamp || inputObject.createdAt || new Date().toISOString(),
+-    processed: true
+-  };
+-  
+-  return { success: true, data: transformedObject };
+-}
+-
+-export function applyFiltering(dataArray, criteria) {
+-  if (Array.isArray(dataArray)) {
+-    return dataArray.filter(element => {
+-      if (criteria.field && criteria.value) {
+-        if (element && typeof element === 'object') {
+-          const fieldData = element[criteria.field];
+-          if (criteria.operator === 'equals') {
+-            return fieldData === criteria.value;
+-          } else if (criteria.operator === 'contains') {
+-            return String(fieldData).includes(String(criteria.value));
+-          } else if (criteria.operator === 'greaterThan') {
+-            return Number(fieldData) > Number(criteria.value);
+-          } else if (criteria.operator === 'lessThan') {
+-            return Number(fieldData) < Number(criteria.value);
+-          }
+-        }
+-        return false;
+-      }
+-      return true;
+-    });
+-  }
+-  return dataArray;
+-}
++// Re-export core functions from dataProcessor for backward compatibility
++export {
++  processDataArray as handleArrayProcessing,
++  processDataObject as handleObjectProcessing,
++  transformData as applyDataTransformation,
++  filterData as applyFiltering
++} from './dataProcessor';
+
+diff --git a/src/utils/agentTools.js b/src/utils/agentTools.js
+index 5678901..efghijk 100644
+--- a/src/utils/agentTools.js
++++ b/src/utils/agentTools.js
+@@ -1,364 +1,89 @@
+ import axios from 'axios';
++import { validateStringInput } from './validationHelpers';
++import { formatResponse } from './responseFormatters';
+ 
+ const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.example.com';
+ 
+-export function validateAgentInput(input) {
+-  if (!input) {
+-    return { valid: false, error: 'Input is required' };
+-  }
+-  if (typeof input !== 'string') {
+-    return { valid: false, error: 'Input must be a string' };
+-  }
+-  if (input.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
+-  }
+-  if (input.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
+-  }
+-  return { valid: true };
+-}
+-
+-export function validateAgentInput2(input) {
+-  if (!input) {
+-    return { valid: false, error: 'Input is required' };
+-  }
+-  if (typeof input !== 'string') {
+-    return { valid: false, error: 'Input must be a string' };
+-  }
+-  if (input.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
+-  }
+-  if (input.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
+-  }
+-  return { valid: true };
+-}
+-
+-export function validateAgentInput3(input) {
+-  if (!input) {
+-    return { valid: false, error: 'Input is required' };
+-  }
+-  if (typeof input !== 'string') {
+-    return { valid: false, error: 'Input must be a string' };
+-  }
+-  if (input.length < 3) {
+-    return { valid: false, error: 'Input must be at least 3 characters' };
+-  }
+-  if (input.length > 100) {
+-    return { valid: false, error: 'Input must be less than 100 characters' };
+-  }
+-  return { valid: true };
+-}
++/**
++ * Legacy alias for validateStringInput (backward compatibility)
++ */
++export const validateAgentInput = validateStringInput;
+ 
++/**
++ * Executes an agent tool with the specified parameters
++ * @param {string} toolName - Name of the tool to execute
++ * @param {object} params - Parameters including query and optional options
++ * @returns {Promise<object>} Result object with success flag and data or error
++ */
+ export async function executeAgentTool(toolName, params) {
+   try {
+-    const validation = validateAgentInput(params.query);
++    const validation = validateStringInput(params.query);
+     if (!validation.valid) {
+       throw new Error(validation.error);
+     }
+     
+     const response = await axios.post(`${API_BASE_URL}/agent/${toolName}`, {
+       query: params.query,
+       options: params.options || {},
+       timestamp: new Date().toISOString()
+     });
+     
+     if (response.data && response.data.result) {
+       return {
+         success: true,
+         data: response.data.result,
+         metadata: response.data.metadata || {}
+       };
+     } else {
+       return {
+         success: false,
+         error: 'Invalid response format'
+       };
+     }
+   } catch (error) {
+     if (error.response) {
+       return {
+         success: false,
+         error: error.response.data?.message || 'Request failed'
+       };
+     } else if (error.request) {
+       return {
+         success: false,
+         error: 'Network error'
+       };
+     } else {
+       return {
+         success: false,
+         error: error.message || 'Unknown error'
+       };
+     }
+   }
+ }
+ 
+-export async function executeAgentTool2(toolName, params) {
+-  try {
+-    const validation = validateAgentInput2(params.query);
+-    if (!validation.valid) {
+-      throw new Error(validation.error);
+-    }
+-    
+-    const response = await axios.post(`${API_BASE_URL}/agent/${toolName}`, {
+-      query: params.query,
+-      options: params.options || {},
+-      timestamp: new Date().toISOString()
+-    });
+-    
+-    if (response.data && response.data.result) {
+-      return {
+-        success: true,
+-        data: response.data.result,
+-        metadata: response.data.metadata || {}
+-      };
+-    } else {
+-      return {
+-        success: false,
+-        error: 'Invalid response format'
+-      };
+-    }
+-  } catch (error) {
+-    if (error.response) {
+-      return {
+-        success: false,
+-        error: error.response.data?.message || 'Request failed'
+-      };
+-    } else if (error.request) {
+-      return {
+-        success: false,
+-        error: 'Network error'
+-      };
+-    } else {
+-      return {
+-        success: false,
+-        error: error.message || 'Unknown error'
+-      };
+-    }
+-  }
+-}
+-
++/**
++ * Processes an agent request with validation and execution
++ * @param {object} requestData - Request object with tool name and params
++ * @returns {Promise<object>} Processing result
++ */
+ export async function processAgentRequest(requestData) {
+   const toolName = requestData.tool;
+   const params = requestData.params;
+   
+   if (!toolName) {
+     return { success: false, error: 'Tool name is required' };
+   }
+   
+   if (!params || !params.query) {
+     return { success: false, error: 'Query parameter is required' };
+   }
+   
+-  const validation = validateAgentInput(params.query);
++  const validation = validateStringInput(params.query);
+   if (!validation.valid) {
+     return { success: false, error: validation.error };
+   }
+   
+   try {
+     const result = await executeAgentTool(toolName, params);
+     return result;
+   } catch (error) {
+     return {
+       success: false,
+       error: error.message || 'Failed to process request'
+     };
+   }
+ }
+ 
+-export async function processAgentRequest2(requestData) {
+-  const toolName = requestData.tool;
+-  const params = requestData.params;
+-  
+-  if (!toolName) {
+-    return { success: false, error: 'Tool name is required' };
+-  }
+-  
+-  if (!params || !params.query) {
+-    return { success: false, error: 'Query parameter is required' };
+-  }
+-  
+-  const validation = validateAgentInput2(params.query);
+-  if (!validation.valid) {
+-    return { success: false, error: validation.error };
+-  }
+-  
+-  try {
+-    const result = await executeAgentTool2(toolName, params);
+-    return result;
+-  } catch (error) {
+-    return {
+-      success: false,
+-      error: error.message || 'Failed to process request'
+-    };
+-  }
+-}
+-
+-export function formatAgentResponse(response) {
+-  if (response.success) {
+-    if (response.data) {
+-      if (Array.isArray(response.data)) {
+-        return {
+-          formatted: true,
+-          type: 'array',
+-          count: response.data.length,
+-          items: response.data.map(item => {
+-            if (item && typeof item === 'object') {
+-              return {
+-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
+-                content: item.content || item.text || item.name || JSON.stringify(item),
+-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+-              };
+-            }
+-            return {
+-              id: Math.random().toString(36).substr(2, 9),
+-              content: String(item),
+-              timestamp: new Date().toISOString()
+-            };
+-          })
+-        };
+-      } else if (typeof response.data === 'object') {
+-        return {
+-          formatted: true,
+-          type: 'object',
+-          data: {
+-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
+-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
+-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
+-          }
+-        };
+-      } else {
+-        return {
+-          formatted: true,
+-          type: 'primitive',
+-          data: {
+-            id: Math.random().toString(36).substr(2, 9),
+-            content: String(response.data),
+-            timestamp: new Date().toISOString()
+-          }
+-        };
+-      }
+-    } else {
+-      return {
+-        formatted: true,
+-        type: 'empty',
+-        data: {
+-          id: Math.random().toString(36).substr(2, 9),
+-          content: 'No data available',
+-          timestamp: new Date().toISOString()
+-        }
+-      };
+-    }
+-  } else {
+-    return {
+-      formatted: true,
+-      type: 'error',
+-      data: {
+-        id: Math.random().toString(36).substr(2, 9),
+-        content: response.error || 'Unknown error',
+-        timestamp: new Date().toISOString()
+-      }
+-    };
+-  }
+-}
+-
+-export function formatAgentResponse2(response) {
+-  if (response.success) {
+-    if (response.data) {
+-      if (Array.isArray(response.data)) {
+-        return {
+-          formatted: true,
+-          type: 'array',
+-          count: response.data.length,
+-          items: response.data.map(item => {
+-            if (item && typeof item === 'object') {
+-              return {
+-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
+-                content: item.content || item.text || item.name || JSON.stringify(item),
+-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+-              };
+-            }
+-            return {
+-              id: Math.random().toString(36).substr(2, 9),
+-              content: String(item),
+-              timestamp: new Date().toISOString()
+-            };
+-          })
+-        };
+-      } else if (typeof response.data === 'object') {
+-        return {
+-          formatted: true,
+-          type: 'object',
+-          data: {
+-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
+-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
+-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
+-          }
+-        };
+-      } else {
+-        return {
+-          formatted: true,
+-          type: 'primitive',
+-          data: {
+-            id: Math.random().toString(36).substr(2, 9),
+-            content: String(response.data),
+-            timestamp: new Date().toISOString()
+-          }
+-        };
+-      }
+-    } else {
+-      return {
+-        formatted: true,
+-        type: 'empty',
+-        data: {
+-          id: Math.random().toString(36).substr(2, 9),
+-          content: 'No data available',
+-          timestamp: new Date().toISOString()
+-        }
+-      };
+-    }
+-  } else {
+-    return {
+-      formatted: true,
+-      type: 'error',
+-      data: {
+-        id: Math.random().toString(36).substr(2, 9),
+-        content: response.error || 'Unknown error',
+-        timestamp: new Date().toISOString()
+-      }
+-    };
+-  }
+-}
+-
+-export function getAgentToolStatus(toolName) {
+-  const statuses = ['active', 'inactive', 'maintenance', 'error'];
+-  const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+-  
+-  if (toolName === 'search') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'analyze') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'transform') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else {
+-    return { status: randomStatus, lastChecked: new Date().toISOString() };
+-  }
+-}
+-
+-export function getAgentToolStatus2(toolName) {
+-  const statuses = ['active', 'inactive', 'maintenance', 'error'];
+-  const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+-  
+-  if (toolName === 'search') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'analyze') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'transform') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else {
+-    return { status: randomStatus, lastChecked: new Date().toISOString() };
+-  }
+-}
++/**
++ * Legacy alias for formatResponse (backward compatibility)
++ */
++export const formatAgentResponse = formatResponse;
++
++/**
++ * Gets the status of an agent tool (mocked)
++ * @param {string} toolName - The tool name
++ * @returns {object} Tool status information
++ */
++export function getAgentToolStatus(toolName) {
++  const knownTools = {
++    'search': 'active',
++    'analyze': 'active',
++    'transform': 'active'
++  };
++  
++  const status = knownTools[toolName] || 'active';
++  return { status, lastChecked: new Date().toISOString() };
++}
+
+diff --git a/src/utils/requestHandler.js b/src/utils/requestHandler.js
+index 6789012..fghijkl 100644
+--- a/src/utils/requestHandler.js
++++ b/src/utils/requestHandler.js
+@@ -1,127 +1,67 @@
+ import axios from 'axios';
++import { validateStringInput } from './validationHelpers';
++import { formatResponse } from './responseFormatters';
+ 
+ const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.example.com';
+ 
++/**
++ * Sends an agent request to the API
++ * @param {string} toolName - Name of the tool to invoke
++ * @param {string} query - The query string
++ * @param {object} options - Optional parameters
++ * @returns {Promise<object>} Response object with success flag and data
++ */
+ export async function sendAgentRequest(toolName, query, options = {}) {
+   try {
+-    if (!query || typeof query !== 'string' || query.length < 3 || query.length > 100) {
+-      return { success: false, error: 'Invalid query parameter' };
++    const validation = validateStringInput(query);
++    if (!validation.valid) {
++      return { success: false, error: validation.error };
+     }
+     
+     const response = await axios.post(`${API_BASE_URL}/agent/${toolName}`, {
+       query: query,
+       options: options,
+       timestamp: new Date().toISOString()
+     });
+     
+     if (response.data && response.data.result) {
+       return {
+         success: true,
+         data: response.data.result,
+         metadata: response.data.metadata || {}
+       };
+     } else {
+       return {
+         success: false,
+         error: 'Invalid response format'
+       };
+     }
+   } catch (err) {
+     if (err.response) {
+       return {
+         success: false,
+         error: err.response.data?.message || 'Request failed'
+       };
+     } else if (err.request) {
+       return {
+         success: false,
+         error: 'Network error'
+       };
+     } else {
+       return {
+         success: false,
+         error: err.message || 'Unknown error'
+       };
+     }
+   }
+ }
+ 
+-export async function makeAgentCall(tool, queryParam, additionalOptions = {}) {
+-  try {
+-    if (!queryParam || typeof queryParam !== 'string' || queryParam.length < 3 || queryParam.length > 100) {
+-      return { success: false, error: 'Invalid query parameter' };
+-    }
+-    
+-    const response = await axios.post(`${API_BASE_URL}/agent/${tool}`, {
+-      query: queryParam,
+-      options: additionalOptions,
+-      timestamp: new Date().toISOString()
+-    });
+-    
+-    if (response.data && response.data.result) {
+-      return {
+-        success: true,
+-        data: response.data.result,
+-        metadata: response.data.metadata || {}
+-      };
+-    } else {
+-      return {
+-        success: false,
+-        error: 'Invalid response format'
+-      };
+-    }
+-  } catch (err) {
+-    if (err.response) {
+-      return {
+-        success: false,
+-        error: err.response.data?.message || 'Request failed'
+-      };
+-    } else if (err.request) {
+-      return {
+-        success: false,
+-        error: 'Network error'
+-      };
+-    } else {
+-      return {
+-        success: false,
+-        error: err.message || 'Unknown error'
+-      };
+-    }
+-  }
+-}
++/**
++ * Legacy alias for sendAgentRequest (backward compatibility)
++ */
++export const makeAgentCall = sendAgentRequest;
+ 
++/**
++ * Checks tool availability
++ * @param {string} toolName - The tool name
++ * @returns {object} Tool status and metadata
++ */
+ export function checkToolAvailability(toolName) {
+-  const availableStatuses = ['active', 'inactive', 'maintenance', 'error'];
+-  const randomStatus = availableStatuses[Math.floor(Math.random() * availableStatuses.length)];
++  const knownTools = {
++    'search': 'active',
++    'analyze': 'active',
++    'transform': 'active'
++  };
+   
+-  if (toolName === 'search') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'analyze') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else if (toolName === 'transform') {
+-    return { status: 'active', lastChecked: new Date().toISOString() };
+-  } else {
+-    return { status: randomStatus, lastChecked: new Date().toISOString() };
+-  }
++  const status = knownTools[toolName] || 'active';
++  return { status, lastChecked: new Date().toISOString() };
+ }
+ 
+-export function normalizeResponseData(response) {
+-  if (response.success) {
+-    if (response.data) {
+-      if (Array.isArray(response.data)) {
+-        return {
+-          formatted: true,
+-          type: 'array',
+-          count: response.data.length,
+-          items: response.data.map(item => {
+-            if (item && typeof item === 'object') {
+-              return {
+-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
+-                content: item.content || item.text || item.name || JSON.stringify(item),
+-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+-              };
+-            }
+-            return {
+-              id: Math.random().toString(36).substr(2, 9),
+-              content: String(item),
+-              timestamp: new Date().toISOString()
+-            };
+-          })
+-        };
+-      } else if (typeof response.data === 'object') {
+-        return {
+-          formatted: true,
+-          type: 'object',
+-          data: {
+-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
+-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
+-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
+-          }
+-        };
+-      } else {
+-        return {
+-          formatted: true,
+-          type: 'primitive',
+-          data: {
+-            id: Math.random().toString(36).substr(2, 9),
+-            content: String(response.data),
+-            timestamp: new Date().toISOString()
+-          }
+-        };
+-      }
+-    } else {
+-      return {
+-        formatted: true,
+-        type: 'empty',
+-        data: {
+-          id: Math.random().toString(36).substr(2, 9),
+-          content: 'No data available',
+-          timestamp: new Date().toISOString()
+-        }
+-      };
+-    }
+-  } else {
+-    return {
+-      formatted: true,
+-      type: 'error',
+-      data: {
+-        id: Math.random().toString(36).substr(2, 9),
+-        content: response.error || 'Unknown error',
+-        timestamp: new Date().toISOString()
+-      }
+-    };
+-  }
+-}
++/**
++ * Normalizes response data into a standardized format
++ * Legacy function - use formatResponse from responseFormatters instead
++ */
++export const normalizeResponseData = formatResponse;
