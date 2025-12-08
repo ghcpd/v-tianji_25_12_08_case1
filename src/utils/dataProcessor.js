@@ -1,59 +1,45 @@
+/**
+ * Normalizes an item by extracting standard fields
+ * @param {*} item - The item to normalize
+ * @param {number} index - Index for fallback ID
+ * @returns {object} Normalized item with id, value, timestamp, processed flag
+ */
+function normalizeItem(item, index = 0) {
+  if (item && typeof item === 'object') {
+    return {
+      id: item.id || item._id || `item-${index}`,
+      value: item.value || item.data || item.content || 0,
+      timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
+      processed: true
+    };
+  }
+  return {
+    id: `item-${index}`,
+    value: item || 0,
+    timestamp: new Date().toISOString(),
+    processed: true
+  };
+}
+
+/**
+ * Processes an array of data items
+ * @param {Array} data - The array to process
+ * @returns {object} Result object with success flag and processed data
+ */
 export function processDataArray(data) {
   if (!Array.isArray(data)) {
     return { error: 'Input must be an array' };
   }
   
-  const result = [];
-  for (let i = 0; i < data.length; i++) {
-    const item = data[i];
-    if (item && typeof item === 'object') {
-      const processed = {
-        id: item.id || item._id || `item-${i}`,
-        value: item.value || item.data || item.content || 0,
-        timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
-        processed: true
-      };
-      result.push(processed);
-    } else {
-      result.push({
-        id: `item-${i}`,
-        value: item || 0,
-        timestamp: new Date().toISOString(),
-        processed: true
-      });
-    }
-  }
+  const result = data.map((item, i) => normalizeItem(item, i));
   return { success: true, data: result };
 }
 
-export function processDataArray2(data) {
-  if (!Array.isArray(data)) {
-    return { error: 'Input must be an array' };
-  }
-  
-  const result = [];
-  for (let i = 0; i < data.length; i++) {
-    const item = data[i];
-    if (item && typeof item === 'object') {
-      const processed = {
-        id: item.id || item._id || `item-${i}`,
-        value: item.value || item.data || item.content || 0,
-        timestamp: item.timestamp || item.createdAt || new Date().toISOString(),
-        processed: true
-      };
-      result.push(processed);
-    } else {
-      result.push({
-        id: `item-${i}`,
-        value: item || 0,
-        timestamp: new Date().toISOString(),
-        processed: true
-      });
-    }
-  }
-  return { success: true, data: result };
-}
-
+/**
+ * Processes a single data object
+ * @param {object} obj - The object to process
+ * @returns {object} Result object with success flag and processed data
+ */
 export function processDataObject(obj) {
   if (!obj || typeof obj !== 'object') {
     return { error: 'Input must be an object' };
@@ -69,149 +55,76 @@ export function processDataObject(obj) {
   return { success: true, data: processed };
 }
 
-export function processDataObject2(obj) {
-  if (!obj || typeof obj !== 'object') {
-    return { error: 'Input must be an object' };
-  }
+/**
+ * Applies case transformation (uppercase/lowercase) to data
+ * @param {*} data - The data to transform
+ * @param {string} transformType - 'uppercase' or 'lowercase'
+ * @returns {*} Transformed data
+ */
+function applyCaseTransformation(data, transformType) {
+  const toUpperCase = transformType === 'uppercase';
+  const transform = toUpperCase ? (s) => s.toUpperCase() : (s) => s.toLowerCase();
   
-  const processed = {
-    id: obj.id || obj._id || Math.random().toString(36).substr(2, 9),
-    value: obj.value || obj.data || obj.content || '',
-    timestamp: obj.timestamp || obj.createdAt || new Date().toISOString(),
-    processed: true
-  };
-  
-  return { success: true, data: processed };
-}
-
-export function transformData(data, transformType) {
-  if (transformType === 'uppercase') {
-    if (typeof data === 'string') {
-      return data.toUpperCase();
-    } else if (Array.isArray(data)) {
-      return data.map(item => {
-        if (typeof item === 'string') {
-          return item.toUpperCase();
-        } else if (item && typeof item === 'object' && item.value) {
-          return { ...item, value: String(item.value).toUpperCase() };
-        }
-        return item;
-      });
-    } else if (data && typeof data === 'object' && data.value) {
-      return { ...data, value: String(data.value).toUpperCase() };
-    }
-    return data;
-  } else if (transformType === 'lowercase') {
-    if (typeof data === 'string') {
-      return data.toLowerCase();
-    } else if (Array.isArray(data)) {
-      return data.map(item => {
-        if (typeof item === 'string') {
-          return item.toLowerCase();
-        } else if (item && typeof item === 'object' && item.value) {
-          return { ...item, value: String(item.value).toLowerCase() };
-        }
-        return item;
-      });
-    } else if (data && typeof data === 'object' && data.value) {
-      return { ...data, value: String(data.value).toLowerCase() };
-    }
-    return data;
-  } else if (transformType === 'reverse') {
-    if (typeof data === 'string') {
-      return data.split('').reverse().join('');
-    } else if (Array.isArray(data)) {
-      return data.slice().reverse();
-    }
-    return data;
-  } else {
-    return data;
-  }
-}
-
-export function transformData2(data, transformType) {
-  if (transformType === 'uppercase') {
-    if (typeof data === 'string') {
-      return data.toUpperCase();
-    } else if (Array.isArray(data)) {
-      return data.map(item => {
-        if (typeof item === 'string') {
-          return item.toUpperCase();
-        } else if (item && typeof item === 'object' && item.value) {
-          return { ...item, value: String(item.value).toUpperCase() };
-        }
-        return item;
-      });
-    } else if (data && typeof data === 'object' && data.value) {
-      return { ...data, value: String(data.value).toUpperCase() };
-    }
-    return data;
-  } else if (transformType === 'lowercase') {
-    if (typeof data === 'string') {
-      return data.toLowerCase();
-    } else if (Array.isArray(data)) {
-      return data.map(item => {
-        if (typeof item === 'string') {
-          return item.toLowerCase();
-        } else if (item && typeof item === 'object' && item.value) {
-          return { ...item, value: String(item.value).toLowerCase() };
-        }
-        return item;
-      });
-    } else if (Array.isArray(data)) {
-      return data.slice().reverse();
-    }
-    return data;
-  } else if (transformType === 'reverse') {
-    if (typeof data === 'string') {
-      return data.split('').reverse().join('');
-    } else if (Array.isArray(data)) {
-      return data.slice().reverse();
-    }
-    return data;
-  } else {
-    return data;
-  }
-}
-
-export function filterData(data, filterCriteria) {
-  if (Array.isArray(data)) {
-    return data.filter(item => {
-      if (filterCriteria.field && filterCriteria.value) {
-        if (item && typeof item === 'object') {
-          const fieldValue = item[filterCriteria.field];
-          if (filterCriteria.operator === 'equals') {
-            return fieldValue === filterCriteria.value;
-          } else if (filterCriteria.operator === 'contains') {
-            return String(fieldValue).includes(String(filterCriteria.value));
-          } else if (filterCriteria.operator === 'greaterThan') {
-            return Number(fieldValue) > Number(filterCriteria.value);
-          } else if (filterCriteria.operator === 'lessThan') {
-            return Number(fieldValue) < Number(filterCriteria.value);
-          }
-        }
-        return false;
+  if (typeof data === 'string') {
+    return transform(data);
+  } else if (Array.isArray(data)) {
+    return data.map(item => {
+      if (typeof item === 'string') {
+        return transform(item);
+      } else if (item && typeof item === 'object' && item.value) {
+        return { ...item, value: transform(String(item.value)) };
       }
-      return true;
+      return item;
     });
+  } else if (data && typeof data === 'object' && data.value) {
+    return { ...data, value: transform(String(data.value)) };
   }
   return data;
 }
 
-export function filterData2(data, filterCriteria) {
+/**
+ * Transforms data using the specified transformation type
+ * @param {*} data - The data to transform
+ * @param {string} transformType - 'uppercase', 'lowercase', or 'reverse'
+ * @returns {*} Transformed data
+ */
+export function transformData(data, transformType) {
+  if (transformType === 'uppercase' || transformType === 'lowercase') {
+    return applyCaseTransformation(data, transformType);
+  } else if (transformType === 'reverse') {
+    if (typeof data === 'string') {
+      return data.split('').reverse().join('');
+    } else if (Array.isArray(data)) {
+      return data.slice().reverse();
+    }
+    return data;
+  }
+  return data;
+}
+
+/**
+ * Filters array data based on criteria
+ * @param {Array} data - The data to filter
+ * @param {object} filterCriteria - Filter criteria object with field, operator, and value
+ * @returns {Array} Filtered data
+ */
+export function filterData(data, filterCriteria) {
   if (Array.isArray(data)) {
     return data.filter(item => {
-      if (filterCriteria.field && filterCriteria.value) {
+      if (filterCriteria.field && filterCriteria.value !== undefined) {
         if (item && typeof item === 'object') {
           const fieldValue = item[filterCriteria.field];
-          if (filterCriteria.operator === 'equals') {
-            return fieldValue === filterCriteria.value;
-          } else if (filterCriteria.operator === 'contains') {
-            return String(fieldValue).includes(String(filterCriteria.value));
-          } else if (filterCriteria.operator === 'greaterThan') {
-            return Number(fieldValue) > Number(filterCriteria.value);
-          } else if (filterCriteria.operator === 'lessThan') {
-            return Number(fieldValue) < Number(filterCriteria.value);
+          switch (filterCriteria.operator) {
+            case 'equals':
+              return fieldValue === filterCriteria.value;
+            case 'contains':
+              return String(fieldValue).includes(String(filterCriteria.value));
+            case 'greaterThan':
+              return Number(fieldValue) > Number(filterCriteria.value);
+            case 'lessThan':
+              return Number(fieldValue) < Number(filterCriteria.value);
+            default:
+              return false;
           }
         }
         return false;

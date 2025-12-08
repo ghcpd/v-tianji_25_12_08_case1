@@ -1,4 +1,38 @@
-export function createFormattedResponse(response) {
+/**
+ * Generates a unique ID for items
+ * @returns {string} A unique identifier
+ */
+function generateItemId(fallbackId = null) {
+  return fallbackId || Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Normalizes an item into a standard format with id, content, and timestamp
+ * @param {*} item - The item to normalize
+ * @param {number} index - The index for fallback ID generation
+ * @returns {object} Normalized item object
+ */
+function normalizeItem(item, index = null) {
+  if (item && typeof item === 'object') {
+    return {
+      id: item.id || item._id || generateItemId(),
+      content: item.content || item.text || item.name || JSON.stringify(item),
+      timestamp: item.timestamp || item.createdAt || new Date().toISOString()
+    };
+  }
+  return {
+    id: generateItemId(),
+    content: String(item),
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Formats a response object into a standardized structure
+ * @param {object} response - The response object to format
+ * @returns {object} Formatted response with structure metadata
+ */
+export function formatResponse(response) {
   if (response.success) {
     if (response.data) {
       if (Array.isArray(response.data)) {
@@ -6,40 +40,19 @@ export function createFormattedResponse(response) {
           formatted: true,
           type: 'array',
           count: response.data.length,
-          items: response.data.map(item => {
-            if (item && typeof item === 'object') {
-              return {
-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
-                content: item.content || item.text || item.name || JSON.stringify(item),
-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
-              };
-            }
-            return {
-              id: Math.random().toString(36).substr(2, 9),
-              content: String(item),
-              timestamp: new Date().toISOString()
-            };
-          })
+          items: response.data.map((item, idx) => normalizeItem(item, idx))
         };
       } else if (typeof response.data === 'object') {
         return {
           formatted: true,
           type: 'object',
-          data: {
-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
-          }
+          data: normalizeItem(response.data)
         };
       } else {
         return {
           formatted: true,
           type: 'primitive',
-          data: {
-            id: Math.random().toString(36).substr(2, 9),
-            content: String(response.data),
-            timestamp: new Date().toISOString()
-          }
+          data: normalizeItem(response.data)
         };
       }
     } else {
@@ -47,7 +60,7 @@ export function createFormattedResponse(response) {
         formatted: true,
         type: 'empty',
         data: {
-          id: Math.random().toString(36).substr(2, 9),
+          id: generateItemId(),
           content: 'No data available',
           timestamp: new Date().toISOString()
         }
@@ -58,7 +71,7 @@ export function createFormattedResponse(response) {
       formatted: true,
       type: 'error',
       data: {
-        id: Math.random().toString(36).substr(2, 9),
+        id: generateItemId(),
         content: response.error || 'Unknown error',
         timestamp: new Date().toISOString()
       }
@@ -66,71 +79,7 @@ export function createFormattedResponse(response) {
   }
 }
 
-export function buildResponseObject(response) {
-  if (response.success) {
-    if (response.data) {
-      if (Array.isArray(response.data)) {
-        return {
-          formatted: true,
-          type: 'array',
-          count: response.data.length,
-          items: response.data.map(item => {
-            if (item && typeof item === 'object') {
-              return {
-                id: item.id || item._id || Math.random().toString(36).substr(2, 9),
-                content: item.content || item.text || item.name || JSON.stringify(item),
-                timestamp: item.timestamp || item.createdAt || new Date().toISOString()
-              };
-            }
-            return {
-              id: Math.random().toString(36).substr(2, 9),
-              content: String(item),
-              timestamp: new Date().toISOString()
-            };
-          })
-        };
-      } else if (typeof response.data === 'object') {
-        return {
-          formatted: true,
-          type: 'object',
-          data: {
-            id: response.data.id || response.data._id || Math.random().toString(36).substr(2, 9),
-            content: response.data.content || response.data.text || response.data.name || JSON.stringify(response.data),
-            timestamp: response.data.timestamp || response.data.createdAt || new Date().toISOString()
-          }
-        };
-      } else {
-        return {
-          formatted: true,
-          type: 'primitive',
-          data: {
-            id: Math.random().toString(36).substr(2, 9),
-            content: String(response.data),
-            timestamp: new Date().toISOString()
-          }
-        };
-      }
-    } else {
-      return {
-        formatted: true,
-        type: 'empty',
-        data: {
-          id: Math.random().toString(36).substr(2, 9),
-          content: 'No data available',
-          timestamp: new Date().toISOString()
-        }
-      };
-    }
-  } else {
-    return {
-      formatted: true,
-      type: 'error',
-      data: {
-        id: Math.random().toString(36).substr(2, 9),
-        content: response.error || 'Unknown error',
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-}
+// Legacy aliases for backward compatibility
+export const createFormattedResponse = formatResponse;
+export const buildResponseObject = formatResponse;
 
